@@ -12,6 +12,7 @@ class Post(BaseModel):
     """ pydantic models to define the schema of the post """
     title: str
     content: str
+    published: bool = True
     rating: Optional[int]
 
 
@@ -75,3 +76,17 @@ def delete_post(id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not a valid post id")
     my_posts.pop(indx)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+
+@app.put('/posts/{id}')
+def update_post(id: int, post: Post):
+    indx = find_index_post(id)
+    if indx == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not a valid post id")
+    post_dict = post.dict()
+    post_dict['id'] = id
+    my_posts[indx] = post_dict
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
