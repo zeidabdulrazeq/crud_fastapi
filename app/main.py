@@ -1,92 +1,25 @@
-from email.mime import base
-from os import stat
-from typing import Optional
-from urllib import response
-from fastapi import Body, FastAPI, Response, status, HTTPException
-from pydantic import BaseModel
-from random import randrange
+from fastapi import FastAPI
+from .database import engine, SessionLocal, get_db
+from . import models
+from .routers import post, user, auth, vote
+from.config import settings
+from fastapi.middleware.cors import CORSMiddleware
 
-
-
-class Post(BaseModel):
-    """ pydantic models to define the schema of the post """
-    title: str
-    content: str
-    published: bool = True
-    rating: Optional[int]
-
+#using sql alchemy to create the db tables when starting
+#models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-my_posts = [
-    {"title": "z",
-    "content": "zz",
-    "id": 1},
-    {"title": "a",
-    "content": "aa",
-    "id": 1}    
-]
-
-
-def find_post(id):
-    """find post id from in memory list of dict"""
-    for p in my_posts:
-        if p['id'] == id:
-            return p
-
-def find_index_post(id):
-    for i, p in enumerate(my_posts):
-        if p['id'] == id:
-            return i
-
-
-
-@app.get("/posts")
-def get_posts():
-    """get all posts"""
-    return {"data": my_posts} #fast api will serialize the data into json  format
-
-
-
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(post: Post): 
-    post_dict = post.dict()
-    post_dict['id'] = randrange(0,10000000)
-    my_posts.append(post_dict)
-    return {"data":my_posts}
-
-
-
-@app.get("/posts/{id}")
-def get_posts(id: int, response:Response):
-    """get specific post"""
-    post = find_post(id)
-    if not post:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND
-                            , detail=f"this id {id} is not found")
-    return {'data':post}
-
-
-@app.delete('/posts/{id}',status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int):
-    indx = find_index_post(id)
-    if indx == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not a valid post id")
-    my_posts.pop(indx)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-
-@app.put('/posts/{id}')
-def update_post(id: int, post: Post):
-    indx = find_index_post(id)
-    if indx == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not a valid post id")
-    post_dict = post.dict()
-    post_dict['id'] = id
-    my_posts[indx] = post_dict
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
+app.include_router(post.router)
+app.include_router(user.router)
+app.include_router(auth.router)
+app.include_router(vote.router)
